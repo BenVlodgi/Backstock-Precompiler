@@ -19,12 +19,17 @@ namespace BackstockPrecompiler
             {
                 #region Get execution parameters
                 string filePath = null;
+                string gamePath = null;
 
                 for (int i = 0; i < args.Length; i++)
                 {
-                    if (args[i] == "-file" && i + 1 < args.Length)
+                    if (args[i] == "-file" && i + 1 < args.Length && !args[i + 1].StartsWith("-"))
                     {
                         filePath = args[++i];
+                    }
+                    else if (args[i] == "-game" && i + 1 < args.Length && !args[i + 1].StartsWith("-"))
+                    {
+                        gamePath = args[++i]; //does this matter, or should I use the vmfs path to find the instances
                     }
                     // else if // Add additional parameters here
                 }
@@ -53,6 +58,12 @@ namespace BackstockPrecompiler
                 foreach(var instance in instances)
                 {
                     // Load the instance vmf
+                    var fileProp = instance.Body.Where(node => node.Name == "file" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    if (fileProp == null)
+                    {
+                        continue;
+                    }
+
                     // Clone the important parts
                     // ReID the clone
                     // Update each entity into the map with relative offsets and angles from the instance point, and the instance origin (defaults at 0,0,0)
