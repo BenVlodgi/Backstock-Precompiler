@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Windows;
 using VMFParser;
 
 namespace BackstockPrecompiler
@@ -59,17 +60,64 @@ namespace BackstockPrecompiler
                 {
                     // Load the instance vmf
                     var fileProp = instance.Body.Where(node => node.Name == "file" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-                    if (fileProp == null)
+                    if (fileProp == null || string.IsNullOrEmpty(fileProp.Value.Trim()))
                     {
+                        // Looks like there is no file property, or its empty
                         continue;
                     }
+                    if (!File.Exists(fileProp.Value))
+                    {
+                        // TODO: What do you do when the file doesn't exist? Probably should throw up some sort of error.
+                        // Just skip it for now.
+                        continue;
+                    }
+                    var instanceVMF = new VMF(File.ReadAllLines(fileProp.Value));
+
 
                     // Clone the important parts
+                    // TODO: think about collapsing groups
+                    // TODO: only grab visible entities
+                    var instanceVisibleContents = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
+                    
+
                     // ReID the clone
-                    // Update each entity into the map with relative offsets and angles from the instance point, and the instance origin (defaults at 0,0,0)
+                    foreach(var node in instanceVisibleContents)
+                    {
+                        node.ReID(ref usableID);
+                    }
+
+
+                    // Update each entity into the map with relative offsets and angles from the instance point, and the instance origin (defaults at 0 0 0)
+                    // angles and origin
+                    var instancePositionProperty = instance.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    var instanceAngleProperty = instance.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    
+                    var instancePosition = new Point(instancePositionProperty?.Value ?? "0 0 0");
+                    var instanceAngle = new Point(instanceAngleProperty?.Value ?? "0 0 0");
+
+                    foreach (var entity in instanceVisibleContents)
+                    {
+                        var relativeEntityPositionProperty = entity.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                        var relativeEntityAngleProperty = entity.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+
+                        var relativeEntityPosition = new Point(relativeEntityPositionProperty?.Value ?? "0 0 0");
+                        var relativeEntityAngle = new Point(relativeEntityAngleProperty?.Value ?? "0 0 0");
+
+                        // TODO: Reposition this entity with all we know:
+                        // instancePosition
+                        // instanceAngle
+                        // relativeEntityPosition
+                        // relativeEntityAngle
+
+                        // We need the:
+                        // newEntityPosition
+                        // newEntityAngle
+                    }
+
+
                     // Rename all entities
                     // Rename all internal communication
-                    // Link exteneral IO
+                    // Link external IO
                     // Replace replacable parameters
                     // Replace replacable materials
                     // Insert into actual map
