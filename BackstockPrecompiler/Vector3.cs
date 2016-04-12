@@ -6,20 +6,20 @@ using System.Threading.Tasks;
 
 namespace BackstockPrecompiler
 {
-    public class Point
+    public class Vector3
     {
         public decimal X;
         public decimal Y;
         public decimal Z;
 
-        public Point()
+        public Vector3()
         {
             X  = 0;
             Y = 0;
             Z = 0;
         }
 
-        public Point(string val)
+        public Vector3(string val)
         {
             var parts = val.Split(' ');
             X = decimal.Parse(parts[0]);
