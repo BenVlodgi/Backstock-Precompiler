@@ -56,8 +56,13 @@ namespace BackstockPrecompiler
 
                 var entities = vmf.Body.Where(item => item.Name == "entity").Select(item => item as VBlock).ToList();
                 var instances = entities.Where(entity => entity.Body.Where(item => item.Name == "classname" && (item as VProperty).Value == "func_instance").Count() > 0).ToList();
-                foreach(var instance in instances)
+                foreach (var instance in instances)
                 {
+                    // Get instance targetname
+                    var instanceTargetName = instance.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    // TODO: Give it a default name if unnamed.
+
+
                     // Load the instance vmf
                     var fileProp = instance.Body.Where(node => node.Name == "file" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
                     if (fileProp == null || string.IsNullOrEmpty(fileProp.Value.Trim()))
@@ -78,10 +83,10 @@ namespace BackstockPrecompiler
                     // TODO: think about collapsing groups
                     // TODO: only grab visible entities
                     var instanceVisibleContents = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
-                    
+
 
                     // ReID the clone
-                    foreach(var node in instanceVisibleContents)
+                    foreach (var node in instanceVisibleContents)
                     {
                         node.ReID(ref usableID);
                     }
@@ -91,17 +96,17 @@ namespace BackstockPrecompiler
                     // angles and origin
                     var instancePositionProperty = instance.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
                     var instanceAngleProperty = instance.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-                    
-                    var instancePosition = new Point(instancePositionProperty?.Value ?? "0 0 0");
-                    var instanceAngle = new Point(instanceAngleProperty?.Value ?? "0 0 0");
+
+                    var instancePosition = new Vector3(instancePositionProperty?.Value ?? "0 0 0");
+                    var instanceAngle = new Vector3(instanceAngleProperty?.Value ?? "0 0 0");
 
                     foreach (var entity in instanceVisibleContents)
                     {
                         var relativeEntityPositionProperty = entity.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
                         var relativeEntityAngleProperty = entity.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
 
-                        var relativeEntityPosition = new Point(relativeEntityPositionProperty?.Value ?? "0 0 0");
-                        var relativeEntityAngle = new Point(relativeEntityAngleProperty?.Value ?? "0 0 0");
+                        var relativeEntityPosition = new Vector3(relativeEntityPositionProperty?.Value ?? "0 0 0");
+                        var relativeEntityAngle = new Vector3(relativeEntityAngleProperty?.Value ?? "0 0 0");
 
                         // TODO: Reposition this entity with all we know:
                         // instancePosition
@@ -116,10 +121,25 @@ namespace BackstockPrecompiler
 
 
                     // Rename all entities
+                    var fixupStyle = instance.Body.Where(node => node.Name == "fixup_style" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault()?.Value ?? "0";
+                    foreach (var entity in instanceVisibleContents)
+                    {
+                        var targetName = entity.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                        if (targetName == null)
+                            continue;
+
+                        if (fixupStyle == "0") 
+                            targetName.Value = instanceTargetName + "-" + targetName.Value; // Prefix
+                        else if (fixupStyle == "1")
+                            targetName.Value = targetName.Value + "-" + instanceTargetName; // Postfix
+
+                    }
+
+
                     // Rename all internal communication
                     // Link external IO
-                    // Replace replacable parameters
-                    // Replace replacable materials
+                    // Replace replaceable parameters
+                    // Replace replaceable materials
                     // Insert into actual map
                 }
 
