@@ -54,14 +54,20 @@ namespace BackstockPrecompiler
                 int usableID = vmf.Body.GetHighestID() + 1;
                 #endregion
 
+                int autoInstance = 0;
+
                 var entities = vmf.Body.Where(item => item.Name == "entity").Select(item => item as VBlock).ToList();
                 var instances = entities.Where(entity => entity.Body.Where(item => item.Name == "classname" && (item as VProperty).Value == "func_instance").Count() > 0).ToList();
                 foreach (var instance in instances)
                 {
                     // Get instance targetname
-                    var instanceTargetName = instance.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-                    // TODO: Give it a default name if unnamed.
+                    string instanceTargetName = "";
+                    var instanceTargetNameProperty = instance.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    if ((instanceTargetNameProperty?.Value ?? "") == "")
+                        instanceTargetName = String.Format("AutoInstance{0}", autoInstance++);
 
+
+                    // TODO: Give it a default name if unnamed (or not?).
 
                     // Load the instance vmf
                     var fileProp = instance.Body.Where(node => node.Name == "file" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
@@ -78,61 +84,38 @@ namespace BackstockPrecompiler
                     }
                     var instanceVMF = new VMF(File.ReadAllLines(fileProp.Value));
 
-
                     // Clone the important parts
                     // TODO: think about collapsing groups
                     // TODO: only grab visible entities
-                    var instanceVisibleContents = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
-
+                    var instanceVisibleEntities = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
+                    var instanceVisibleSolids = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
 
                     // ReID the clone
-                    foreach (var node in instanceVisibleContents)
+                    foreach (var node in instanceVisibleEntities)
                     {
                         node.ReID(ref usableID);
                     }
 
-
                     // Update each entity into the map with relative offsets and angles from the instance point, and the instance origin (defaults at 0 0 0)
                     // angles and origin
-                    var instancePositionProperty = instance.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-                    var instanceAngleProperty = instance.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    var instanceOriginProperty = instance.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+                    var instanceAnglesProperty = instance.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
 
-                    var instancePosition = new Vector3(instancePositionProperty?.Value ?? "0 0 0");
-                    var instanceAngle = new Vector3(instanceAngleProperty?.Value ?? "0 0 0");
+                    var instanceOrigin = new Vector3(instanceOriginProperty?.Value ?? "0 0 0");
+                    var instanceAngles = new Vector3(instanceAnglesProperty?.Value ?? "0 0 0");
 
-                    foreach (var entity in instanceVisibleContents)
+                    var fixupStyle = int.Parse(instance.Body.Where(node => node.Name == "fixup_style" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault()?.Value ?? "0");
+                    
+
+                    foreach (var entity in instanceVisibleEntities)
                     {
-                        var relativeEntityPositionProperty = entity.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-                        var relativeEntityAngleProperty = entity.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-
-                        var relativeEntityPosition = new Vector3(relativeEntityPositionProperty?.Value ?? "0 0 0");
-                        var relativeEntityAngle = new Vector3(relativeEntityAngleProperty?.Value ?? "0 0 0");
-
-                        // TODO: Reposition this entity with all we know:
-                        // instancePosition
-                        // instanceAngle
-                        // relativeEntityPosition
-                        // relativeEntityAngle
-
-                        // We need the:
-                        // newEntityPosition
-                        // newEntityAngle
+                        VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles);
                     }
 
-
-                    // Rename all entities
-                    var fixupStyle = instance.Body.Where(node => node.Name == "fixup_style" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault()?.Value ?? "0";
-                    foreach (var entity in instanceVisibleContents)
+                    
+                    foreach (var solid in instanceVisibleSolids)
                     {
-                        var targetName = entity.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
-                        if (targetName == null)
-                            continue;
-
-                        if (fixupStyle == "0") 
-                            targetName.Value = instanceTargetName + "-" + targetName.Value; // Prefix
-                        else if (fixupStyle == "1")
-                            targetName.Value = targetName.Value + "-" + instanceTargetName; // Postfix
-
+                        CollapseSolid(solid);
                     }
 
 
@@ -157,6 +140,40 @@ namespace BackstockPrecompiler
             return 0;
         }
 
+        static VBlock CollapseEntity(VBlock entity, int fixupStyle, string instanceName, Vector3 instanceOrigin, Vector3 instanceAngles)
+        {
+            VBlock collapsedEntity = entity.DeepClone();
+            var targetName = collapsedEntity.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+
+            var relativeEntityPositionProperty = collapsedEntity.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+            var relativeEntityAngleProperty = collapsedEntity.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+
+            var relativeEntityPosition = new Vector3(relativeEntityPositionProperty?.Value ?? "0 0 0");
+            var relativeEntityAngle = new Vector3(relativeEntityAngleProperty?.Value ?? "0 0 0");
+
+            // TODO: Reposition this entity with all we know:
+            // instancePosition
+            // instanceAngle
+            // relativeEntityPosition
+            // relativeEntityAngle
+
+            // We need the:
+            // newEntityPosition
+            // newEntityAngle
+
+            // Rename Entity
+            if (fixupStyle == 0)
+                targetName.Value = instanceName + "-" + targetName.Value; // Prefix
+            else if (fixupStyle == 1)
+                targetName.Value = targetName.Value + "-" + instanceName; // Postfix
+
+            return collapsedEntity;
+        }
+
+        static VBlock CollapseSolid(VBlock solid)
+        {
+            return solid.DeepClone();
+        }
 
         private static void WriteLine(string format, ConsoleColor foreground = ConsoleColor.Gray, ConsoleColor background = ConsoleColor.Black, params object[] args)
         {
