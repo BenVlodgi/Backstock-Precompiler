@@ -164,6 +164,13 @@ namespace BackstockPrecompiler
             // newEntityPosition
             // newEntityAngle
 
+            var newEntityPosition = relativeEntityPosition.Clone();
+            newEntityPosition.Rotate(instanceAngles);
+            newEntityPosition.Offset(instanceOrigin);
+
+            var newEntityAngle = relativeEntityAngle.Clone();
+            newEntityAngle.AddAngles(instanceAngles);
+
             // Rename Entity
             if (!targetName.Value.Contains("@"))
                 if (fixupStyle == 0)
