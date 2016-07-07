@@ -55,6 +55,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="1_instance.vmf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="App.config" />
     <None Include="dev_room.vmf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
