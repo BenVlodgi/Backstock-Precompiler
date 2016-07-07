@@ -14,9 +14,9 @@ namespace BackstockPrecompiler
 
         public Vector3()
         {
-            X  = 0;
-            Y = 0;
-            Z = 0;
+            X = 0; //Pitch
+            Y = 0; //Yaw
+            Z = 0; //Roll
         }
 
         public Vector3(string val)
@@ -25,6 +25,11 @@ namespace BackstockPrecompiler
             X = decimal.Parse(parts[0]);
             Y = decimal.Parse(parts[1]);
             Z = decimal.Parse(parts[2]);
+        }
+
+        public Vector3 Clone()
+        {
+            return new Vector3() { X = X, Y = Y, Z = Z };
         }
     }
 }
