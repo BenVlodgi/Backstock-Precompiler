@@ -108,14 +108,14 @@ namespace BackstockPrecompiler
                     var instanceAngles = new Vector3(instanceAnglesProperty?.Value ?? "0 0 0");
 
                     var fixupStyle = int.Parse(instance.Body.Where(node => node.Name == "fixup_style" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault()?.Value ?? "0");
-                    
+
 
                     foreach (var entity in instanceVisibleEntities)
                     {
                         VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles);
                     }
 
-                    
+
                     foreach (var solid in instanceVisibleSolids)
                     {
                         CollapseSolid(solid);
@@ -165,10 +165,11 @@ namespace BackstockPrecompiler
             // newEntityAngle
 
             // Rename Entity
-            if (fixupStyle == 0)
-                targetName.Value = instanceName + "-" + targetName.Value; // Prefix
-            else if (fixupStyle == 1)
-                targetName.Value = targetName.Value + "-" + instanceName; // Postfix
+            if (!targetName.Value.Contains("@"))
+                if (fixupStyle == 0)
+                    targetName.Value = instanceName + "-" + targetName.Value; // Prefix
+                else if (fixupStyle == 1)
+                    targetName.Value = targetName.Value + "-" + instanceName; // Postfix
 
             return collapsedEntity;
         }
