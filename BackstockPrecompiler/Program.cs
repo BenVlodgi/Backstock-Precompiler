@@ -15,6 +15,8 @@ namespace BackstockPrecompiler
         {
 #if DEBUG
             args = new string[] { "-file", "dev_room.vmf" };
+
+            Utils.DirectoryCopy(@"../../instances", "instances", true, true);
 #endif
             try
             {
