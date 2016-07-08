@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extensions.cs" />
+    <Compile Include="MatrixMath.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="Vector3.cs" />
     <Compile Include="Program.cs" />
