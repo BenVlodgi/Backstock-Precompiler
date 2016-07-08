@@ -27,6 +27,11 @@ namespace BackstockPrecompiler
             Z = decimal.Parse(parts[2]);
         }
 
+        public override string ToString()
+        {
+            return string.Format("{0} {1} {2}", X, Y, Z);
+        }
+
         public Vector3 Clone()
         {
             return new Vector3() { X = X, Y = Y, Z = Z };
