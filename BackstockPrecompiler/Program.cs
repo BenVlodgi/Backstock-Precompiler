@@ -56,6 +56,13 @@ namespace BackstockPrecompiler
                 #region Identify useable IDs
                 int usableID = vmf.Body.GetHighestID() + 1;
                 #endregion
+                
+                var world = vmf.Body.Where(node => node.Name == "world").Where(node => node is VBlock).Cast<VBlock>().FirstOrDefault();
+                if (world == null)
+                {
+                    Console.WriteLine("Can't find \"world\"");
+                    return -1;
+                }
 
                 int autoInstance = 0;
 
@@ -91,7 +98,9 @@ namespace BackstockPrecompiler
                     // TODO: think about collapsing groups
                     // TODO: only grab visible entities
                     var instanceVisibleEntities = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
-                    var instanceVisibleSolids = instanceVMF.Body.Where(node => node.Name == "entity").Where(node => node is VBlock).Cast<VBlock>();
+                    var instanceVisibleSolids = instanceVMF.Body.Where(node => node.Name == "world").Where(node => node is VBlock).Cast<VBlock>()
+                        .SelectMany(node => node.Body.Where(worldNode => worldNode.Name == "solid").Where(worldNode => worldNode is VBlock).Cast<VBlock>()
+                        );
 
                     // ReID the clone
                     foreach (var node in instanceVisibleEntities)
@@ -113,12 +122,16 @@ namespace BackstockPrecompiler
                     foreach (var entity in instanceVisibleEntities)
                     {
                         VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles);
+
+                        vmf.Body.Remove(entity);
                     }
 
 
                     foreach (var solid in instanceVisibleSolids)
                     {
-                        CollapseSolid(solid);
+                        VBlock collapsedSolid = CollapseSolid(solid);
+
+                        world.Body.Remove(solid);
                     }
 
 
