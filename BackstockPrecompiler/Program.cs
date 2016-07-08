@@ -195,7 +195,7 @@ namespace BackstockPrecompiler
             relativeEntityAngleProperty.Value = newEntityAngle.ToString();
 
             // Rename Entity
-            if (!targetName.Value.Contains("@"))
+            if (targetName != null && !targetName.Value.Contains("@"))
                 if (fixupStyle == 0)
                     targetName.Value = instanceName + "-" + targetName.Value; // Prefix
                 else if (fixupStyle == 1)
