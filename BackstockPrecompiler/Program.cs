@@ -142,7 +142,13 @@ namespace BackstockPrecompiler
                     // Insert into actual map
                 }
 
-                File.WriteAllLines(filePath, vmf.ToVMFStrings());
+
+                string newFilePath = "";
+                newFilePath = filePath.EndsWith(".vmf")
+                    ? filePath.Insert(filePath.LastIndexOf("."), "_new")
+                    : filePath + "_new";
+
+                File.WriteAllLines(newFilePath, vmf.ToVMFStrings());
             }
             #region catch - display exception
             catch (Exception ex)
