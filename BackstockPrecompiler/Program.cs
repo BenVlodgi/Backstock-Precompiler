@@ -122,16 +122,11 @@ namespace BackstockPrecompiler
                     foreach (var entity in instanceVisibleEntities)
                     {
                         VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles);
-
-                        vmf.Body.Remove(entity);
                     }
-
 
                     foreach (var solid in instanceVisibleSolids)
                     {
                         VBlock collapsedSolid = CollapseSolid(solid);
-
-                        world.Body.Remove(solid);
                     }
 
 
@@ -140,6 +135,9 @@ namespace BackstockPrecompiler
                     // Replace replaceable parameters
                     // Replace replaceable materials
                     // Insert into actual map
+
+                    // Remove instance from map
+                    vmf.Body.Remove(instance);
                 }
 
 
