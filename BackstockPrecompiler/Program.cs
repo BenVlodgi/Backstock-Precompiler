@@ -64,6 +64,9 @@ namespace BackstockPrecompiler
                     return -1;
                 }
 
+                int lastEntityLocation = 0;
+                lastEntityLocation = vmf.Body.IndexOf(world) + vmf.Body.Where(node => node.Name == "entity").Count();
+
                 int autoInstance = 0;
 
                 var entities = vmf.Body.Where(item => item.Name == "entity").Select(item => item as VBlock).ToList();
@@ -122,6 +125,7 @@ namespace BackstockPrecompiler
                     foreach (var entity in instanceVisibleEntities)
                     {
                         VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles);
+                        vmf.Body.Insert(lastEntityLocation++, collapsedEntity);
                     }
 
                     foreach (var solid in instanceVisibleSolids)
