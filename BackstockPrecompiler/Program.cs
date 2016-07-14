@@ -19,8 +19,11 @@ namespace BackstockPrecompiler
 
             Utils.DirectoryCopy(@"../../instances", "instances", true, true);
 #endif
+
+#if !DEBUG
             try
             {
+#endif
                 #region Get execution parameters
                 string filePath = null;
                 string gamePath = null;
@@ -151,6 +154,8 @@ namespace BackstockPrecompiler
                     : filePath + "_new";
 
                 File.WriteAllLines(newFilePath, vmf.ToVMFStrings());
+
+#if !DEBUG
             }
             #region catch - display exception
             catch (Exception ex)
@@ -160,6 +165,7 @@ namespace BackstockPrecompiler
                 return 1;
             }
             #endregion
+#endif
 
             return 0;
         }
