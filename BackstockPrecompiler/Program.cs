@@ -59,7 +59,7 @@ namespace BackstockPrecompiler
                 #region Identify useable IDs
                 int usableID = vmf.Body.GetHighestID() + 1;
                 #endregion
-                
+
                 var world = vmf.Body.Where(node => node.Name == "world").Where(node => node is VBlock).Cast<VBlock>().FirstOrDefault();
                 if (world == null)
                 {
@@ -108,12 +108,6 @@ namespace BackstockPrecompiler
                         .SelectMany(node => node.Body.Where(worldNode => worldNode.Name == "solid").Where(worldNode => worldNode is VBlock).Cast<VBlock>()
                         );
 
-                    // ReID the clone
-                    foreach (var node in instanceVisibleEntities)
-                    {
-                        node.ReID(ref usableID);
-                    }
-
                     // Update each entity into the map with relative offsets and angles from the instance point, and the instance origin (defaults at 0 0 0)
                     // angles and origin
                     var instanceOriginProperty = instance.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
@@ -127,13 +121,14 @@ namespace BackstockPrecompiler
 
                     foreach (var entity in instanceVisibleEntities)
                     {
-                        VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles);
+                        VBlock collapsedEntity = CollapseEntity(entity, fixupStyle, instanceTargetName, instanceOrigin, instanceAngles, ref usableID);
                         vmf.Body.Insert(lastEntityLocation++, collapsedEntity);
                     }
 
                     foreach (var solid in instanceVisibleSolids)
                     {
-                        VBlock collapsedSolid = CollapseSolid(solid);
+                        VBlock collapsedSolid = CollapseSolid(solid, ref usableID);
+                        world.Body.Add(collapsedSolid);
                     }
 
 
@@ -170,10 +165,12 @@ namespace BackstockPrecompiler
             return 0;
         }
 
-        static VBlock CollapseEntity(VBlock entity, int fixupStyle, string instanceName, Vector3 instanceOrigin, Vector3 instanceAngles)
+        static VBlock CollapseEntity(VBlock entity, int fixupStyle, string instanceName, Vector3 instanceOrigin, Vector3 instanceAngles, ref int highID)
         {
             VBlock collapsedEntity = entity.DeepClone();
-            var targetName = collapsedEntity.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+            var targetNameProperty = collapsedEntity.Body.Where(node => node.Name == "targetname" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
+
+            var solids = entity.Body.Where(node => node.Name == "solid" && node is VBlock).Cast<VBlock>();
 
             var relativeEntityPositionProperty = collapsedEntity.Body.Where(node => node.Name == "origin" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
             var relativeEntityAngleProperty = collapsedEntity.Body.Where(node => node.Name == "angles" && node.GetType() == typeof(VProperty)).Select(node => node as VProperty).FirstOrDefault();
@@ -181,37 +178,46 @@ namespace BackstockPrecompiler
             var relativeEntityPosition = new Vector3(relativeEntityPositionProperty?.Value ?? "0 0 0");
             var relativeEntityAngle = new Vector3(relativeEntityAngleProperty?.Value ?? "0 0 0");
 
-            // TODO: Reposition this entity with all we know:
-            // instancePosition
-            // instanceAngle
-            // relativeEntityPosition
-            // relativeEntityAngle
+            if (relativeEntityPositionProperty != null)
+            {
+                var newEntityPosition = relativeEntityPosition.Clone();
+                newEntityPosition.Rotate(instanceAngles);
+                newEntityPosition.Offset(instanceOrigin);
+                relativeEntityPositionProperty.Value = newEntityPosition.ToString();
+            }
 
-            // We need the:
-            // newEntityPosition
-            // newEntityAngle
+            if (relativeEntityAngleProperty != null)
+            {
+                var newEntityAngle = relativeEntityAngle.Clone();
+                newEntityAngle.AddAngles(instanceAngles);
+                relativeEntityAngleProperty.Value = newEntityAngle.ToString();
+            }
 
-            var newEntityPosition = relativeEntityPosition.Clone();
-            newEntityPosition.Rotate(instanceAngles);
-            newEntityPosition.Offset(instanceOrigin);
-            relativeEntityPositionProperty.Value = newEntityPosition.ToString();
+            collapsedEntity.ReID(ref highID);
 
-            var newEntityAngle = relativeEntityAngle.Clone();
-            newEntityAngle.AddAngles(instanceAngles);
-            relativeEntityAngleProperty.Value = newEntityAngle.ToString();
+            // Collapse the entity's sub solids
+            foreach (var solid in solids)
+            {
+                entity.Body[entity.Body.IndexOf(solid)] = CollapseSolid(solid, ref highID);
+            }
+
 
             // Rename Entity
-            if (targetName != null && !targetName.Value.Contains("@"))
+            if (targetNameProperty != null && !targetNameProperty.Value.Contains("@"))
+            {
                 if (fixupStyle == 0)
-                    targetName.Value = instanceName + "-" + targetName.Value; // Prefix
+                    targetNameProperty.Value = instanceName + "-" + targetNameProperty.Value; // Prefix
                 else if (fixupStyle == 1)
-                    targetName.Value = targetName.Value + "-" + instanceName; // Postfix
+                    targetNameProperty.Value = targetNameProperty.Value + "-" + instanceName; // Postfix
+            }
 
             return collapsedEntity;
         }
 
-        static VBlock CollapseSolid(VBlock solid)
+        static VBlock CollapseSolid(VBlock solid, ref int highID)
         {
+            // TODO: transform solid
+
             return solid.DeepClone();
         }
 
