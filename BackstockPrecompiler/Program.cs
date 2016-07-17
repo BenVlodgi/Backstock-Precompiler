@@ -24,40 +24,68 @@ namespace BackstockPrecompiler
             try
             {
 #endif
-                #region Get execution parameters
-                string filePath = null;
-                string gamePath = null;
+            #region Get execution parameters
+            string filePath = null;
+            string gamePath = null;
 
-                for (int i = 0; i < args.Length; i++)
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i] == "-file" && i + 1 < args.Length && !args[i + 1].StartsWith("-"))
                 {
-                    if (args[i] == "-file" && i + 1 < args.Length && !args[i + 1].StartsWith("-"))
-                    {
-                        filePath = args[++i];
-                    }
-                    else if (args[i] == "-game" && i + 1 < args.Length && !args[i + 1].StartsWith("-"))
-                    {
-                        gamePath = args[++i]; //does this matter, or should I use the vmfs path to find the instances
-                    }
-                    // else if // Add additional parameters here
+                    filePath = args[++i];
                 }
-                if (filePath == null)
+                else if (args[i] == "-game" && i + 1 < args.Length && !args[i + 1].StartsWith("-"))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    return 1;
+                    gamePath = args[++i]; //does this matter, or should I use the vmfs path to find the instances
                 }
-                #endregion
+                // else if // Add additional parameters here
+            }
+            if (filePath == null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                return 1;
+            }
+            #endregion
 
-                #region Load VMF
-                Console.Write("Loading file contents from \"" + filePath + "\"...");
-                string[] fileContents = File.ReadAllLines(filePath);
-                Console.WriteLine("Complete.");
+            #region Load VMF
+            Console.Write("Loading file contents from \"" + filePath + "\"...");
+            string[] fileContents = File.ReadAllLines(filePath);
+            Console.WriteLine("Complete.");
 
-                Console.Write("Parsing vmf ");
-                VMF vmf = new VMF(fileContents);
-                #endregion
+            Console.Write("Parsing vmf ");
+            VMF vmf = new VMF(fileContents);
+            #endregion
 
-                #region Identify useable IDs
-                int usableID = vmf.Body.GetHighestID() + 1;
+            CollapseInstances(vmf);
+
+            #region Save Altered VMF
+            string newFilePath = "";
+            newFilePath = filePath.EndsWith(".vmf")
+                ? filePath.Insert(filePath.LastIndexOf("."), "_new")
+                : filePath + "_new";
+
+            File.WriteAllLines(newFilePath, vmf.ToVMFStrings());
+            #endregion
+
+#if !DEBUG
+            }
+            #region catch - display exception
+            catch (Exception ex)
+            {
+                WriteLine("Exception:", ConsoleColor.Yellow);
+                WriteLine(ex.ToString(), ConsoleColor.Red);
+                return 1;
+            }
+            #endregion
+#endif
+
+            return 0;
+        }
+
+        static int CollapseInstances(VMF vmf)
+        { 
+            #region Identify useable IDs
+            int usableID = vmf.Body.GetHighestID() + 1;
                 #endregion
 
                 var world = vmf.Body.Where(node => node.Name == "world").Where(node => node is VBlock).Cast<VBlock>().FirstOrDefault();
@@ -142,25 +170,6 @@ namespace BackstockPrecompiler
                     vmf.Body.Remove(instance);
                 }
 
-
-                string newFilePath = "";
-                newFilePath = filePath.EndsWith(".vmf")
-                    ? filePath.Insert(filePath.LastIndexOf("."), "_new")
-                    : filePath + "_new";
-
-                File.WriteAllLines(newFilePath, vmf.ToVMFStrings());
-
-#if !DEBUG
-            }
-            #region catch - display exception
-            catch (Exception ex)
-            {
-                WriteLine("Exception:", ConsoleColor.Yellow);
-                WriteLine(ex.ToString(), ConsoleColor.Red);
-                return 1;
-            }
-            #endregion
-#endif
 
             return 0;
         }
